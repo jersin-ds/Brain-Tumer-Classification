@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brain MRI Classifier</title>
+  <style>
+    :root {
+      --paper: #faf6ef;
+      --card: #fffdf9;
+      --ink: #2b2622;
+      --muted: #6f655b;
+      --line: #e6dccd;
+      --accent: #c4552d;
+      --accent-dark: #a24322;
+      --sage: #5f7d6a;
+      --sage-bg: #eef3ec;
+      --rose-bg: #fbeceb;
+      --rose: #9b2f2f;
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      --sans: "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 40px 16px 56px;
+      color: var(--ink);
+      background: var(--paper);
+      font-family: var(--sans);
+      line-height: 1.6;
+    }
+
+    main {
+      width: min(100%, 600px);
+      margin: 0 auto;
+    }
+
+    header { margin-bottom: 28px; }
+
+    .eyebrow {
+      margin: 0 0 10px;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-family: var(--serif);
+      font-size: clamp(32px, 7vw, 44px);
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.01em;
+    }
+
+    .intro { margin: 0; color: var(--muted); font-size: 17px; }
+
+    .card {
+      padding: clamp(20px, 5vw, 32px);
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--card);
+      box-shadow: 0 1px 2px rgb(60 40 20 / 5%), 0 8px 24px rgb(60 40 20 / 6%);
+    }
+
+    .drop {
+      display: block;
+      padding: 28px 20px;
+      border: 2px dashed #d3c4ae;
+      border-radius: 14px;
+      background: #fbf7f0;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+
+    .drop:hover, .drop.dragover { border-color: var(--accent); background: #fdf1ea; }
+    .drop:focus-within { outline: 3px solid #e9a98f; outline-offset: 3px; }
+
+    .drop input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+
+    .drop-icon { font-size: 30px; line-height: 1; }
+    .drop-title { display: block; margin-top: 8px; font-size: 17px; font-weight: 600; }
+    .drop-sub { display: block; margin-top: 2px; color: var(--muted); font-size: 14px; }
+
+    .preview {
+      display: none;
+      margin-top: 16px;
+      text-align: center;
+    }
+    .preview.show { display: block; }
+    .preview img {
+      max-width: 100%;
+      max-height: 260px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #000;
+    }
+    .preview p { margin: 8px 0 0; color: var(--muted); font-size: 14px; word-break: break-all; }
+
+    button {
+      width: 100%;
+      margin-top: 20px;
+      padding: 14px 20px;
+      border: 0;
+      border-radius: 999px;
+      color: #fff;
+      background: var(--accent);
+      font: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .15s, transform .05s;
+    }
+    button:hover { background: var(--accent-dark); }
+    button:active { transform: translateY(1px); }
+    button:focus-visible { outline: 3px solid #e9a98f; outline-offset: 3px; }
+
+    .message {
+      margin-top: 22px;
+      padding: 16px 18px;
+      border-radius: 14px;
+    }
+
+    .error { color: var(--rose); background: var(--rose-bg); border: 1px solid #efc9c6; }
+
+    .result { color: #2f4a3a; background: var(--sage-bg); border: 1px solid #cfdccf; }
+    .result .label { font-size: 14px; color: var(--sage); font-weight: 600; }
+    .result strong {
+      display: block;
+      margin: 2px 0 4px;
+      font-family: var(--serif);
+      font-size: 30px;
+      text-transform: capitalize;
+    }
+    .result .conf { font-size: 15px; }
+
+    .note {
+      margin-top: 24px;
+      padding: 14px 16px;
+      border-left: 3px solid #d9b98a;
+      background: #f6eddc;
+      border-radius: 0 10px 10px 0;
+      color: #5a4a33;
+      font-size: 14px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="eyebrow">A learning project</p>
+      <h1>Brain MRI classifier</h1>
+      <p class="intro">Share an MRI image and the model will give its best guess: glioma, meningioma, pituitary, or no tumor.</p>
+    </header>
+
+    <div class="card">
+      <form method="post" enctype="multipart/form-data">
+        <label class="drop" id="drop" for="mri_image">
+          <span class="drop-icon" aria-hidden="true">🧠</span>
+          <span class="drop-title" id="drop-title">Choose an MRI image</span>
+          <span class="drop-sub">or drag it here · JPG, PNG or BMP · up to 10 MB</span>
+          <input id="mri_image" name="mri_image" type="file" accept=".jpg,.jpeg,.png,.bmp" required>
+        </label>
+
+        <div class="preview" id="preview">
+          <img id="preview-img" alt="Preview of the selected MRI image">
+          <p id="preview-name"></p>
+        </div>
+
+        <button type="submit">Analyze image</button>
+      </form>
+
+      {% if error %}
+        <div class="message error" role="alert">{{ error }}</div>
+      {% endif %}
+
+      {% if prediction %}
+        <section class="message result" aria-live="polite">
+          <span class="label">The model's best guess</span>
+          <strong>{{ prediction.label }}</strong>
+          <span class="conf">About {{ "%.2f"|format(prediction.confidence) }}% confident</span>
+        </section>
+      {% endif %}
+    </div>
+
+    <p class="note">
+      Please remember: this is an educational demo, not a medical device. Its answers should never be
+      used for diagnosis or treatment. If you have health concerns, talk to a doctor.
+    </p>
+  </main>
+
+  <script>
+    (function () {
+      var input = document.getElementById('mri_image');
+      var drop = document.getElementById('drop');
+      var title = document.getElementById('drop-title');
+      var preview = document.getElementById('preview');
+      var img = document.getElementById('preview-img');
+      var name = document.getElementById('preview-name');
+
+      function show() {
+        var f = input.files && input.files[0];
+        if (!f) { preview.classList.remove('show'); title.textContent = 'Choose an MRI image'; return; }
+        title.textContent = 'Choose a different image';
+        name.textContent = f.name;
+        img.src = URL.createObjectURL(f);
+        preview.classList.add('show');
+      }
+
+      input.addEventListener('change', show);
+      ['dragenter', 'dragover'].forEach(function (e) {
+        drop.addEventListener(e, function (ev) { ev.preventDefault(); drop.classList.add('dragover'); });
+      });
+      ['dragleave', 'drop'].forEach(function (e) {
+        drop.addEventListener(e, function () { drop.classList.remove('dragover'); });
+      });
+      drop.addEventListener('drop', function (ev) {
+        ev.preventDefault();
+        if (ev.dataTransfer.files.length) { input.files = ev.dataTransfer.files; show(); }
+      });
+    })();
+  </script>
+</body>
+</html>
